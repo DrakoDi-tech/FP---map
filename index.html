@@ -46,7 +46,7 @@
   <header>
     <div class="brand">FP Клубна Карта</div>
     <div class="controls">
-      <select id="locationSelect">
+      <select id="locationSelect"><option value="lonestar">Озеро Лон Стар</option>
         <option value="emerald">Озеро Емеральд</option>
         <option value="kairo">Кайро-Нойрі</option>
         <option value="stcroix">Річка Сент-Круа</option>
@@ -117,10 +117,10 @@
   <script>
     // Вкажіть посилання на зображення карт водойм (наприклад, завантажені у ваш репозиторій як "./emerald.jpg")
     const LOCATIONS = {
-      emerald: { name: "Озеро Емеральд", mapUrl: "" },
-      kairo: { name: "Кайро-Нойрі", mapUrl: "" },
-      stcroix: { name: "Річка Сент-Круа", mapUrl: "" }
-    };
+  lonestar: { name: "Озеро Лон Стар", mapUrl: "./IMG_20261123_163041.png" },
+  emerald: { name: "Озеро Емеральд", mapUrl: "" },
+  kairo: { name: "Кайро-Нойрі", mapUrl: "" },
+  stcroix: { name: "Річка Сент-Круа", mapUrl: "" }
 
     const STORAGE_KEY = "fp_club_pins_v2";
     const DEFAULT_PINS = [
