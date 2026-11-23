@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FP Клубна Карта</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+    body { background: #0f172a; color: #f8fafc; min-height: 100vh; display: flex; flex-direction: column; }
+    header { background: #1e293b; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; border-bottom: 1px solid #334155; }
+    .brand { font-weight: 700; font-size: 16px; color: #38bdf8; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; flex: 1; justify-content: flex-end; }
+    select, input, button { padding: 8px 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: #f8fafc; font-size: 14px; }
+    button { background: #0284c7; border: none; font-weight: 600; cursor: pointer; }
+    button:hover { background: #0369a1; }
+    .map-wrap { position: relative; flex: 1; min-height: 420px; background: radial-gradient(circle at center, #134e4a 0%, #082f49 100%); overflow: hidden; margin: 12px; border-radius: 14px; border: 1px solid #334155; }
+    .grid-bg { position: absolute; inset: 0; background-image: linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px); background-size: 40px 40px; pointer-events: none; }
+    .pin { position: absolute; transform: translate(-50%, -50%); background: #1e293b; border: 2px solid #38bdf8; color: #fff; padding: 6px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 6px 16px rgba(0,0,0,0.45); white-space: nowrap; }
+    .pin.trophy { border-color: #22c55e; }
+    .pin.unique { border-color: #c084fc; }
+    .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: #1e293b; border: 1px solid #475569; border-radius: 14px; max-width: 440px; width: 100%; padding: 18px; }
+    .modal h2 { font-size: 18px; margin-bottom: 10px; }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; margin-bottom: 12px; background: #334155; }
+    .badge.trophy { background: #15803d; color: #dcfce7; }
+    .badge.unique { background: #7e22ce; color: #f3e8ff; }
+    .row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #334155; font-size: 14px; gap: 12px; }
+    .row span:first-child { color: #94a3b8; }
+    .form-grid { display: grid; gap: 10px; margin-top: 10px; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+    .btn-secondary { background: #475569; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">FP Клубна Карта</div>
+    <div class="controls">
+      <select id="locationSelect">
+        <option value="emerald">Озеро Емеральд</option>
+        <option value="kairo">Кайро-Нойрі</option>
+        <option value="stcroix">Річка Сент-Круа</option>
+      </select>
+      <input id="searchInput" type="text" placeholder="Пошук риби..." />
+      <button id="openAddBtn">+ Додати мітку</button>
+    </div>
+  </header>
+
+  <main class="map-wrap" id="mapWrap">
+    <div class="grid-bg"></div>
+    <div id="pinsLayer"></div>
+  </main>
+
+  <div class="modal-backdrop" id="detailModal">
+    <div class="modal">
+      <h2 id="dSpecies"></h2>
+      <div id="dRank" class="badge"></div>
+      <div class="row"><span>Локація</span><span id="dLocation"></span></div>
+      <div class="row"><span>Координати</span><span id="dCoords"></span></div>
+      <div class="row"><span>Погода та час</span><span id="dWeather"></span></div>
+      <div class="row"><span>Наживка / Приманка</span><span id="dBait"></span></div>
+      <div class="row"><span>Снасть / Глибина</span><span id="dTackle"></span></div>
+      <div class="row"><span>Автор</span><span id="dAuthor"></span></div>
+      <div class="modal-actions">
+        <button class="btn-secondary" id="closeDetailBtn">Закрити</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="addModal">
+    <div class="modal">
+      <h2>Нова мітка улову</h2>
+      <form id="addForm" class="form-grid">
+        <select id="fLocation">
+          <option value="emerald">Озеро Емеральд</option>
+          <option value="kairo">Кайро-Нойрі</option>
+          <option value="stcroix">Річка Сент-Круа</option>
+        </select>
+        <input id="fSpecies" required placeholder="Вид риби (напр. Судак світлоперий)" />
+        <select id="fRank">
+          <option value="common">Звичайна</option>
+          <option value="trophy">Трофей</option>
+          <option value="unique">Унік</option>
+        </select>
+        <input id="fX" type="number" step="any" required placeholder="Координата X (напр. 120.5)" />
+        <input id="fY" type="number" step="any" required placeholder="Координата Y (напр. -45.2)" />
+        <input id="fWeather" required placeholder="Погода та час (напр. Хмарно, ніч)" />
+        <input id="fBait" required placeholder="Наживка / Приманка" />
+        <input id="fTackle" placeholder="Снасть / Глибина (напр. 150 см)" />
+        <input id="fAuthor" placeholder="Хто додав (ваш нік)" />
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" id="cancelAddBtn">Скасувати</button>
+          <button type="submit">Зберегти</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const LOC_NAMES = {
+      emerald: "Озеро Емеральд",
+      kairo: "Кайро-Нойрі",
+      stcroix: "Річка Сент-Круа"
+    };
+
+    const STORAGE_KEY = "fp_club_pins_v1";
+    const DEFAULT_PINS = [
+      { id: 1, location: "emerald", species: "Судак світлоперий", rank: "trophy", x: 110, y: -35, weather: "Хмарно, 21:00", bait: "Вузька блешня 7г", tackle: "Джиг-головка #2/0", author: "Лілія" },
+      { id: 2, location: "kairo", species: "Тунець", rank: "unique", x: 240, y: 80, weather: "Ясно, 06:30", bait: "Кальмар / Пількер", tackle: "Тролінг, 12 м", author: "Лілія" }
+    ];
+
+    function loadPins() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+        return Array.isArray(saved) && saved.length ? saved : DEFAULT_PINS;
+      } catch {
+        return DEFAULT_PINS;
+      }
+    }
+
+    let pins = loadPins();
+
+    function savePins() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(pins));
+    }
+
+    function coordsToPercent(x, y) {
+      const left = Math.max(8, Math.min(92, 50 + (Number(x) % 80) * 0.5));
+      const top = Math.max(10, Math.min(90, 50 - (Number(y) % 80) * 0.45));
+      return { left: left + "%", top: top + "%" };
+    }
+
+    function renderPins() {
+      const loc = document.getElementById("locationSelect").value;
+      const query = document.getElementById("searchInput").value.trim().toLowerCase();
+      const layer = document.getElementById("pinsLayer");
+      layer.innerHTML = "";
+
+      pins
+        .filter(p => p.location === loc && (!query || p.species.toLowerCase().includes(query)))
+        .forEach(p => {
+          const pos = coordsToPercent(p.x, p.y);
+          const el = document.createElement("button");
+          el.className = "pin " + (p.rank || "");
+          el.style.left = pos.left;
+          el.style.top = pos.top;
+          el.textContent = p.species;
+          el.onclick = () => openDetail(p);
+          layer.appendChild(el);
+        });
+    }
+
+    function openDetail(p) {
+      document.getElementById("dSpecies").textContent = p.species;
+      const badge = document.getElementById("dRank");
+      badge.className = "badge " + (p.rank || "");
+      badge.textContent = p.rank === "trophy" ? "Трофей" : p.rank === "unique" ? "Унік" : "Звичайна";
+      document.getElementById("dLocation").textContent = LOC_NAMES[p.location] || p.location;
+      document.getElementById("dCoords").textContent = `[${p.x}, ${p.y}]`;
+      document.getElementById("dWeather").textContent = p.weather || "—";
+      document.getElementById("dBait").textContent = p.bait || "—";
+      document.getElementById("dTackle").textContent = p.tackle || "—";
+      document.getElementById("dAuthor").textContent = p.author || "Гість";
+      document.getElementById("detailModal").classList.add("open");
+    }
+
+    document.getElementById("closeDetailBtn").onclick = () => {
+      document.getElementById("detailModal").classList.remove("open");
+    };
+
+    document.getElementById("openAddBtn").onclick = () => {
+      document.getElementById("fLocation").value = document.getElementById("locationSelect").value;
+      document.getElementById("addModal").classList.add("open");
+    };
+
+    document.getElementById("cancelAddBtn").onclick = () => {
+      document.getElementById("addModal").classList.remove("open");
+    };
+
+    document.getElementById("addForm").onsubmit = (e) => {
+      e.preventDefault();
+      const newPin = {
+        id: Date.now(),
+        location: document.getElementById("fLocation").value,
+        species: document.getElementById("fSpecies").value.trim(),
+        rank: document.getElementById("fRank").value,
+        x: parseFloat(document.getElementById("fX").value),
+        y: parseFloat(document.getElementById("fY").value),
+        weather: document.getElementById("fWeather").value.trim(),
+        bait: document.getElementById("fBait").value.trim(),
+        tackle: document.getElementById("fTackle").value.trim(),
+        author: document.getElementById("fAuthor").value.trim() || "Лілія"
+      };
+      pins.push(newPin);
+      savePins();
+      document.getElementById("locationSelect").value = newPin.location;
+      renderPins();
+      e.target.reset();
+      document.getElementById("addModal").classList.remove("open");
+    };
+
+    document.getElementById("locationSelect").onchange = renderPins;
+    document.getElementById("searchInput").oninput = renderPins;
+    renderPins();
+  </script>
+</body>
+</html>
